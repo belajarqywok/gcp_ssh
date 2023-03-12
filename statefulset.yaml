@@ -1,0 +1,72 @@
+apiVersion: v1
+kind: PersistentVolume
+
+metadata:
+  name: gcp-ssh-volume
+spec:
+  accessModes:
+    - ReadWriteOnce
+  capacity:
+    storage: 1Gi
+  hostPath:
+    path: /data/gcp_ssh
+
+---
+
+apiVersion: apps/v1
+kind: StatefulSet
+
+metadata:
+  name: gcp-ssh
+  labels:
+    name: gcp-ssh
+
+spec:
+  serviceName: gcp-ssh-service
+  replicas: 1
+  selector:
+    matchLabels:
+      name: gcp-ssh
+
+  volumeClaimTemplates:
+    - metadata:
+        name: gcp-ssh-claim
+      spec:
+        accessModes:
+          - ReadWriteOnce
+        volumeMode: Filesystem
+        resources:
+          requests:
+            storage: 1Gi
+
+  template:
+    metadata:
+      name: gcp-ssh
+      labels:
+        name: gcp-ssh
+    spec:
+      containers:
+        - name: gcp-ssh
+          image: qywok/gcp-ssh:1.0
+          ports:
+            - containerPort: 22
+          volumeMounts:
+            - mountPath: /data/gcp_ssh/claims
+              name: gcp-ssh-claim
+
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: gcp-ssh
+spec:
+  type: NodePort
+  selector:
+    name: gcp-ssh
+  ports:
+    - port: 22
+      targetPort: 22
+      nodePort: 30907
+      name: ssh
+      protocol: TCP
